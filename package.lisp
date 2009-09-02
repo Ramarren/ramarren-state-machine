@@ -11,4 +11,6 @@
            #:state-machine-state
            #:drive-state-machine
            #:defstate
-           #:next-state))
+           #:next-state
+           #:sub-machine
+           #:pop-machine))
