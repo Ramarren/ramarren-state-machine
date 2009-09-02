@@ -58,19 +58,20 @@
       (when sm-stack
         (setf (next-state-of state-machine-state)
               (pop (state-machine-of state-machine-state)))
-        (get-next-state-function state-machine-state (car sm-stack))))))
+        (get-next-state-function state-machine-state)))))
 
-(defun get-next-state-function (state-machine-state state-machine)
-  (let ((next-state (next-state-of state-machine-state)))
+(defun get-next-state-function (state-machine-state)
+  (let ((next-state (next-state-of state-machine-state))
+        (state-machine (ensure-state-machine state-machine-state)))
     (if next-state
         (if-let (next-state-function (gethash next-state (states-of state-machine)))
           next-state-function
           (error "State machine ~s has no state ~s." state-machine next-state))
         (maybe-sub-machine state-machine-state))))
 
-(defun drive-state-machine (state-machine-state &rest driver-args)
-  (let ((sm (ensure-state-machine state-machine-state)))
-    (let ((next-state-function (get-next-state-function state-machine-state sm)))
+(defgeneric drive-state-machine (state-machine-state &rest driver-args)
+  (:method ((state-machine-state state-machine-state) &rest driver-args)
+    (let ((next-state-function (get-next-state-function state-machine-state)))
       (when next-state-function
         (funcall next-state-function
                  state-machine-state
