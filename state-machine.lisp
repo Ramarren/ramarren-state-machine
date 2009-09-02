@@ -78,6 +78,14 @@
                  driver-args))
       (values (and next-state-function t)))))
 
+(defun next-state (next-state &rest next-state-args)
+  (declare (ignore next-state next-state-args))
+  (error "Top level next-state is not supposed to be called. It's to give slime autodoc a chance."))
+
+(defun sub-machine (next-state sub-machine sub-state &rest next-state-args)
+  (declare (ignore next-state sub-machine sub-state next-state-args))
+  (error "Top level sub-machine is not supposed to be called. It's to give slime autodoc a chance."))
+
 (defmacro defstate (name-and-options state-args driver-args &body body)
   (destructuring-bind (name . options) (ensure-list name-and-options)
     (let ((state-machine (if (getf options :state-machine)
@@ -103,7 +111,7 @@
                                  (setf (next-state-of ,state-machine-state) ,next-state))
                                (setf (state-args-of ,state-machine-state) ,next-state-args)
                                (return-from ,defun-name ,next-state))
-                             (sub-machine (,next-state ,sub-machine ,sub-state  &rest ,next-state-args)
+                             (sub-machine (,next-state ,sub-machine ,sub-state &rest ,next-state-args)
                                (with-accessors ((sm state-machine-of)) ,state-machine-state
                                  (etypecase sm
                                     (state-machine
