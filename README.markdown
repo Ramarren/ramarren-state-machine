@@ -1,6 +1,6 @@
 # state machines
 
-This is a little library for state machines. These are definitely not finite state machines, or anything really formal.
+This is a little library for state machines. These are definitely not finite state machines, or anything really formal. It is also not optimized in any way.
 
 # reference
 
