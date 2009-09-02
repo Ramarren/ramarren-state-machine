@@ -16,17 +16,14 @@
 
 (defstate (:end :state sms) () ()
   (print :end)
-  (if (and (listp (state-machine-of sms))
-           (cdr (state-machine-of sms)))
-      (pop-machine :end2)
-      (next-state :end)))
+  (next-state nil))
 
 (defsm* test2)
 
 (defstate :start2 () ()
   (print :start2)
-  (sub-machine 'test :start))
+  (sub-machine :end2 'test :start))
 
 (defstate :end2 () ()
   (print :end2)
-  (next-state :end2))
+  (next-state nil))

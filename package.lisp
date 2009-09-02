@@ -1,6 +1,6 @@
 (defpackage #:ramarren-state-machine
     (:nicknames #:sm)
-  (:use #:cl #:iterate #:alexandria)
+  (:use #:cl #:alexandria)
   (:export #:state-machine
            #:*current-state-machine*
            #:define-state-machine
@@ -12,5 +12,4 @@
            #:drive-state-machine
            #:defstate
            #:next-state
-           #:sub-machine
-           #:pop-machine))
+           #:sub-machine))

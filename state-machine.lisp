@@ -44,16 +44,38 @@
    (next-state :accessor next-state-of :initarg :next-state)
    (state-args  :accessor state-args-of  :initform nil )))
 
-(defun drive-state-machine (state-machine-state &rest driver-args)
+(defun ensure-state-machine (state-machine-state)
   (let ((sm (state-machine-of state-machine-state)))
     (let ((sm (if (listp sm) (car sm) sm)))
-      (let ((next-state-function (gethash (next-state-of state-machine-state)
-                                          (states-of sm))))
-        (if (null next-state-function)
-            (error "State machine ~s has no state ~s." sm (next-state-of state-machine-state))
-            (funcall next-state-function
-                     state-machine-state
-                     driver-args))))))
+      (if (typep sm 'state-machine)
+          sm
+          (error "~a has no state machine." state-machine-state)))))
+
+(defun maybe-sub-machine (state-machine-state)
+  (with-accessors ((sm-stack state-machine-of)) state-machine-state
+    (when sm-stack
+      (pop sm-stack)
+      (when sm-stack
+        (setf (next-state-of state-machine-state)
+              (pop (state-machine-of state-machine-state)))
+        (get-next-state-function state-machine-state (car sm-stack))))))
+
+(defun get-next-state-function (state-machine-state state-machine)
+  (let ((next-state (next-state-of state-machine-state)))
+    (if next-state
+        (if-let (next-state-function (gethash next-state (states-of state-machine)))
+          next-state-function
+          (error "State machine ~s has no state ~s." state-machine next-state))
+        (maybe-sub-machine state-machine-state))))
+
+(defun drive-state-machine (state-machine-state &rest driver-args)
+  (let ((sm (ensure-state-machine state-machine-state)))
+    (let ((next-state-function (get-next-state-function state-machine-state sm)))
+      (when next-state-function
+        (funcall next-state-function
+                 state-machine-state
+                 driver-args))
+      (values (and next-state-function t)))))
 
 (defmacro defstate (name-and-options state-args driver-args &body body)
   (destructuring-bind (name . options) (ensure-list name-and-options)
@@ -63,11 +85,11 @@
       (let ((defun-name (if (gethash name (states-of state-machine))
                             (gethash name (states-of state-machine))
                             (setf (gethash name (states-of state-machine))
-                                  (gensym (format nil "~a-" name))))))
+                                  (gensym (format nil "~a-~a-" (name-of state-machine) name))))))
         (let ((state-machine-state (if (getf options :state)
                                        (getf options :state)
                                        (gensym "STATE-MACHINE-STATE-"))))
-         (with-unique-names (driver-args-arg next-state next-state-args sub-machine)
+         (with-unique-names (driver-args-arg next-state sub-state next-state-args sub-machine)
            `(progn
               (setf (gethash ,name (states-of (find-state-machine ',(name-of state-machine))))
                     ',defun-name)
@@ -76,19 +98,20 @@
                   (destructuring-bind ,driver-args ,driver-args-arg
                     (labels ((next-state (,next-state &rest ,next-state-args)
                                (assert (state-machine-of ,state-machine-state))
-                               (setf (next-state-of ,state-machine-state) ,next-state
-                                     (state-args-of ,state-machine-state) ,next-state-args)
+                               (unless (eql ,next-state t)
+                                 (setf (next-state-of ,state-machine-state) ,next-state))
+                               (setf (state-args-of ,state-machine-state) ,next-state-args)
                                (return-from ,defun-name ,next-state))
-                             (sub-machine (,sub-machine ,next-state &rest ,next-state-args)
+                             (sub-machine (,next-state ,sub-machine ,sub-state  &rest ,next-state-args)
                                (with-accessors ((sm state-machine-of)) ,state-machine-state
-                                (if (atom sm)
-                                    (setf sm
-                                          (list (find-state-machine ,sub-machine)
-                                                sm))
-                                    (push (find-state-machine ,sub-machine)
-                                          sm)))
-                               (apply #'next-state ,next-state ,next-state-args))
-                             (pop-machine (,next-state &rest ,next-state-args)
-                               (pop (state-machine-of ,state-machine-state))
-                               (apply #'next-state ,next-state ,next-state-args)))
+                                 (etypecase sm
+                                    (state-machine
+                                       (setf sm
+                                             (list (find-state-machine ,sub-machine)
+                                                   ,next-state
+                                                   sm)))
+                                   (list
+                                      (push ,next-state sm)
+                                      (push (find-state-machine ,sub-machine) sm))))
+                               (apply #'next-state ,sub-state ,next-state-args)))
                       ,@body)))))))))))
