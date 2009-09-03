@@ -12,4 +12,6 @@
            #:drive-state-machine
            #:defstate
            #:next-state
-           #:sub-machine))
+           #:sub-machine
+           #:next-state
+           #:state-args))
