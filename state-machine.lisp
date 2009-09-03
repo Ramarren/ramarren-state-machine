@@ -87,7 +87,7 @@
   (error "Top level sub-machine is not supposed to be called. It's to give slime autodoc a chance."))
 
 (defun make-labels-form (defun-name state-machine-state)
-  (with-unique-names (next-state next-state-args sub-machine sub-state)
+  (with-unique-names (next-state next-state-args sub-machine sub-state sm)
     `((next-state (,next-state &rest ,next-state-args)
                   (assert (state-machine-of ,state-machine-state))
                   (unless (eql ,next-state t)
@@ -95,19 +95,19 @@
                   (setf (state-args-of ,state-machine-state) ,next-state-args)
                   (return-from ,defun-name ,next-state))
       (sub-machine (,next-state ,sub-machine ,sub-state &rest ,next-state-args)
-                   (with-accessors ((sm state-machine-of)) ,state-machine-state
+                   (with-accessors ((,sm state-machine-of)) ,state-machine-state
                      (let ((,next-state (if (eql ,next-state t)
                                             (next-state-of ,state-machine-state)
                                             ,next-state)))
-                       (etypecase sm
+                       (etypecase ,sm
                          (state-machine
-                            (setf sm
+                            (setf ,sm
                                   (list (find-state-machine ,sub-machine)
                                         ,next-state
-                                        sm)))
+                                        ,sm)))
                          (list
-                            (push ,next-state sm)
-                            (push (find-state-machine ,sub-machine) sm)))))
+                            (push ,next-state ,sm)
+                            (push (find-state-machine ,sub-machine) ,sm)))))
                    (apply #'next-state ,sub-state ,next-state-args)))))
 
 (defmacro defstate (name-and-options state-args driver-args &body body)
